@@ -8,7 +8,7 @@ exports.createTask = async (req, res) => {
   }
 
   try {
-    const task = new Task({ title, description, user: req.user.id });
+    const task = new Task({ title, description, completed: false, user: req.user.id });
     await task.save();
 
     res.status(201).json({
@@ -22,11 +22,20 @@ exports.createTask = async (req, res) => {
   }
 };
 
-
 exports.getTasks = async (req, res) => {
   try {
     const tasks = await Task.find({ user: req.user.id });
-    res.json(tasks);
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => task.completed).length;
+    const inProgressTasks = totalTasks - completedTasks;
+
+    res.json({ 
+      tasks,
+      totalTasks,
+      completedTasks,
+      inProgressTasks
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -41,7 +50,9 @@ exports.updateTask = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updatedFields = req.body;
+    task = await Task.findByIdAndUpdate(req.params.id, updatedFields, { new: true, runValidators: true });
+    
     if (!task) return res.status(400).json({ message: "Update failed" });
 
     res.json(task);
@@ -49,7 +60,6 @@ exports.updateTask = async (req, res) => {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
-
 
 exports.deleteTask = async (req, res) => {
   try {
